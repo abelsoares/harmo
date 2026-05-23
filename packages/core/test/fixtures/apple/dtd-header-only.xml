@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE HealthData [
+<!-- HealthKit Export Version: 14 -->
+<!ELEMENT HealthData (ExportDate,Me,(Record|Correlation|Workout|ActivitySummary)*)>
+<!ATTLIST HealthData locale CDATA #REQUIRED>
+<!ELEMENT ExportDate EMPTY>
+<!ATTLIST ExportDate value CDATA #REQUIRED>
+<!ELEMENT Me EMPTY>
+<!ATTLIST Me HKCharacteristicTypeIdentifierDateOfBirth CDATA #REQUIRED HKCharacteristicTypeIdentifierBiologicalSex CDATA #REQUIRED>
+<!ELEMENT Record (MetadataEntry*)>
+<!ATTLIST Record type CDATA #REQUIRED unit CDATA #IMPLIED value CDATA #IMPLIED sourceName CDATA #REQUIRED startDate CDATA #REQUIRED endDate CDATA #REQUIRED>
+<!ELEMENT MetadataEntry EMPTY>
+<!ATTLIST MetadataEntry key CDATA #REQUIRED value CDATA #REQUIRED>
+<!ELEMENT ActivitySummary EMPTY>
+<!ATTLIST ActivitySummary dateComponents CDATA #IMPLIED activeEnergyBurned CDATA #IMPLIED>
+]>
+<HealthData locale="en_PT">
+ <ExportDate value="2026-05-20 11:44:58 +0100"/>
+ <Me HKCharacteristicTypeIdentifierDateOfBirth="1982-02-10" HKCharacteristicTypeIdentifierBiologicalSex="HKBiologicalSexMale"/>
+ <Record type="HKQuantityTypeIdentifierHeartRate" sourceName="Abel’s Apple Watch" unit="count/min" startDate="2024-12-30 22:36:38 +0100" endDate="2024-12-30 22:36:38 +0100" value="72"/>
+ <ActivitySummary dateComponents="2024-12-30" activeEnergyBurned="312.269"/>
+</HealthData>

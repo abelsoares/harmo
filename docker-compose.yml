@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: tembo.docker.scarf.sh/tembo/pg17-pgmq:latest
+    container_name: harmo-postgres
+    environment:
+      POSTGRES_USER: harmo
+      POSTGRES_PASSWORD: harmo
+      POSTGRES_DB: harmo
+    ports:
+      - '5433:5432'
+    volumes:
+      - ./.tmp/pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U harmo -d harmo']
+      interval: 2s
+      timeout: 5s
+      retries: 20

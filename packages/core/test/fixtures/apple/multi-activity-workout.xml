@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HealthData locale="en_PT">
+ <Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="15.0" durationUnit="min" sourceName="Abel’s Apple Watch" sourceVersion="11.1" creationDate="2025-09-02 17:40:30 +0100" startDate="2025-09-02 17:24:50 +0100" endDate="2025-09-02 17:40:19 +0100">
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <WorkoutActivity uuid="D3FE3B79-5F69-41B0-8C81-AD3767F5D1FE" startDate="2025-09-02 17:24:50 +0100" endDate="2025-09-02 17:29:50 +0100" duration="5.0" durationUnit="min">
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-02 17:24:50 +0100" duration="6.28" durationUnit="min"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierStepCount" startDate="2025-09-02 17:24:50 +0100" endDate="2025-09-02 17:29:50 +0100" sum="737.521" unit="count"/>
+  </WorkoutActivity>
+  <WorkoutActivity uuid="669E6186-9801-4D12-8B6C-EE73B6AEDB7F" startDate="2025-09-02 17:29:50 +0100" endDate="2025-09-02 17:35:19 +0100" duration="5.49" durationUnit="min">
+   <WorkoutEvent type="HKWorkoutEventTypeSegment" date="2025-09-02 17:31:06 +0100" duration="5.95" durationUnit="min"/>
+   <WorkoutStatistics type="HKQuantityTypeIdentifierStepCount" startDate="2025-09-02 17:29:50 +0100" endDate="2025-09-02 17:35:19 +0100" sum="872.91" unit="count"/>
+  </WorkoutActivity>
+ </Workout>
+</HealthData>

@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.tmp/
+coverage/
+*.log
+.DS_Store
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Personal data — never commit
+docs/apple_health_export/

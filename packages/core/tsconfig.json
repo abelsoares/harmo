@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "outDir": "./dist",
+    "paths": {
+      "@apps/*": ["./apps/*"],
+      "@harmo/common": ["../common/src/index.ts"],
+      "@harmo/common/*": ["../common/src/*"],
+      "@src/*": ["./src/*"],
+      "@test/*": ["./test/*"]
+    },
+    "rootDir": "../",
+    "sourceMap": true,
+    "types": ["node"]
+  },
+  "exclude": ["node_modules", "dist"],
+  "extends": "../../tsconfig.json",
+  "include": [
+    "src/**/*",
+    "apps/**/*",
+    "bin/**/*",
+    "test/**/*",
+    "migrations/**/*",
+    "knexfile.ts",
+    "vitest.config.ts",
+    "../common/src/**/*"
+  ]
+}

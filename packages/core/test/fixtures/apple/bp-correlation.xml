@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HealthData locale="en_PT">
+ <Correlation type="HKCorrelationTypeIdentifierBloodPressure" sourceName="Health" sourceVersion="18.2" creationDate="2025-01-03 08:30:55 +0100" startDate="2025-01-03 08:30:00 +0100" endDate="2025-01-03 08:30:00 +0100">
+  <MetadataEntry key="HKWasUserEntered" value="1"/>
+  <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Health" sourceVersion="18.2" unit="mmHg" creationDate="2025-01-03 08:30:55 +0100" startDate="2025-01-03 08:30:00 +0100" endDate="2025-01-03 08:30:00 +0100" value="135">
+   <MetadataEntry key="HKWasUserEntered" value="1"/>
+  </Record>
+  <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Health" sourceVersion="18.2" unit="mmHg" creationDate="2025-01-03 08:30:55 +0100" startDate="2025-01-03 08:30:00 +0100" endDate="2025-01-03 08:30:00 +0100" value="78">
+   <MetadataEntry key="HKWasUserEntered" value="1"/>
+  </Record>
+ </Correlation>
+ <Record type="HKQuantityTypeIdentifierBloodPressureSystolic" sourceName="Health" sourceVersion="18.2" unit="mmHg" creationDate="2025-01-03 08:30:55 +0100" startDate="2025-01-03 08:30:00 +0100" endDate="2025-01-03 08:30:00 +0100" value="135">
+  <MetadataEntry key="HKWasUserEntered" value="1"/>
+ </Record>
+ <Record type="HKQuantityTypeIdentifierBloodPressureDiastolic" sourceName="Health" sourceVersion="18.2" unit="mmHg" creationDate="2025-01-03 08:30:55 +0100" startDate="2025-01-03 08:30:00 +0100" endDate="2025-01-03 08:30:00 +0100" value="78">
+  <MetadataEntry key="HKWasUserEntered" value="1"/>
+ </Record>
+</HealthData>

@@ -1,0 +1,46 @@
+{
+  "name": "@harmo/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Harmo core: DB models, normalization, ingestion, aggregation, and app entrypoints.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "node esbuild.migrations.config.js && node esbuild.config.js",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "cli": "tsx --env-file=.env apps/cli/index.ts",
+    "db:build": "node esbuild.migrations.config.js",
+    "db:migrate": "npm run db:build && node --env-file=.env ../../node_modules/.bin/knex --knexfile dist/knexfile.js migrate:latest",
+    "db:migrate:test": "npm run db:build && node --env-file=.env.test ../../node_modules/.bin/knex --knexfile dist/knexfile.js migrate:latest",
+    "db:reset": "tsx --env-file=.env bin/db-reset.ts",
+    "importer": "tsx --env-file=.env apps/importer/index.ts",
+    "knex": "tsx --env-file=.env ../../node_modules/.bin/knex",
+    "pretest": "npm run db:build",
+    "test": "NODE_ENV=test node --env-file=.env.test ../../node_modules/.bin/vitest run",
+    "test:watch": "NODE_ENV=test node --env-file=.env.test ../../node_modules/.bin/vitest",
+    "typecheck": "tsc --noEmit",
+    "worker": "tsx --env-file=.env apps/worker/index.ts"
+  },
+  "dependencies": {
+    "@harmo/common": "*",
+    "@sentry/node": "^8.55.0",
+    "commander": "^12.1.0",
+    "knex": "^3.2.10",
+    "objection": "^3.1.5",
+    "pg": "^8.16.0",
+    "pino": "^9.7.0",
+    "pino-pretty": "^11.3.0",
+    "sax": "^1.4.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.15.0",
+    "@types/sax": "^1.2.7",
+    "@vitest/coverage-v8": "^2.1.9",
+    "esbuild": "^0.24.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.9"
+  }
+}

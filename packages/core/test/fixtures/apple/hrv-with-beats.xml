@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HealthData locale="en_PT">
+ <Record type="HKQuantityTypeIdentifierHeartRateVariabilitySDNN" sourceName="Abel’s Apple Watch" sourceVersion="11.1" unit="ms" creationDate="2024-12-30 18:07:57 +0100" startDate="2024-12-30 18:06:57 +0100" endDate="2024-12-30 18:07:54 +0100" value="26.2191">
+  <MetadataEntry key="HKAlgorithmVersion" value="2"/>
+  <HeartRateVariabilityMetadataList>
+   <InstantaneousBeatsPerMinute bpm="100" time="17:07:00,29"/>
+   <InstantaneousBeatsPerMinute bpm="98"  time="17:07:00,90"/>
+   <InstantaneousBeatsPerMinute bpm="96"  time="17:07:01,52"/>
+  </HeartRateVariabilityMetadataList>
+ </Record>
+</HealthData>

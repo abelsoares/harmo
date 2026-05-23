@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<HealthData locale="en_PT">
+ <Workout workoutActivityType="HKWorkoutActivityTypeRunning" duration="30.4" durationUnit="min" sourceName="Strava" sourceVersion="45816" creationDate="2024-12-30 22:36:38 +0100" startDate="2024-12-28 08:40:14 +0100" endDate="2024-12-28 09:10:39 +0100">
+  <MetadataEntry key="HKIndoorWorkout" value="0"/>
+  <MetadataEntry key="HKExternalUUID" value="strava://activities/13205603309"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierActiveEnergyBurned" startDate="2024-12-28 08:40:14 +0100" endDate="2024-12-28 09:10:39 +0100" sum="528.152" unit="kcal"/>
+  <WorkoutStatistics type="HKQuantityTypeIdentifierDistanceWalkingRunning" startDate="2024-12-28 08:40:14 +0100" endDate="2024-12-28 09:10:39 +0100" sum="5.0528" unit="km"/>
+  <WorkoutRoute sourceName="Strava" sourceVersion="45816" creationDate="2024-12-30 22:36:39 +0100" startDate="2024-12-30 22:36:38 +0100" endDate="2024-12-30 22:36:38 +0100">
+   <FileReference path="/workout-routes/route_2024-12-30_9.36pm.gpx"/>
+  </WorkoutRoute>
+ </Workout>
+</HealthData>

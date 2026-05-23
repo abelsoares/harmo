@@ -1,0 +1,35 @@
+{
+  "name": "harmo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Canonical health-data ingestion + normalization platform.",
+  "license": "UNLICENSED",
+  "author": "Abel Soares <abelsoares@untile.pt>",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0 <25.0.0",
+    "npm": ">=11.0.0 <12.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "cli": "npm run cli --prefix ./packages/core --",
+    "db:migrate": "npm run db:migrate --prefix ./packages/core",
+    "db:reset": "npm run db:reset --prefix ./packages/core",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "importer": "npm run importer --prefix ./packages/core --",
+    "lint": "biome check .",
+    "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "worker": "npm run worker --prefix ./packages/core"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "typescript": "^5.7.3"
+  }
+}

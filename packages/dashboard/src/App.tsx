@@ -1,5 +1,5 @@
 import type { ApiAggregateRow } from '@harmo/api-client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -23,15 +23,27 @@ import { useAsync } from './hooks';
 import { daysBetween, fmtDate, fmtDuration, fmtNumber, rangeFromPreset } from './util';
 
 const PIE_COLORS = ['#7aa6ff', '#a78bfa', '#4ade80', '#fbbf24', '#f87171', '#22d3ee', '#fb7185', '#facc15'];
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:4001';
 
 export function App() {
   const initial = rangeFromPreset('30d');
   const [from, setFrom] = useState<Date>(initial.from);
   const [to, setTo] = useState<Date>(initial.to);
   const [timezone, setTimezone] = useState('Europe/Lisbon');
+  const [retryNonce, setRetryNonce] = useState(0);
   const days = daysBetween(from, to);
 
-  const health = useAsync(() => client.health(), []);
+  // Refetch when the user comes back to the tab — handles the "API was down when I opened
+  // the tab" failure mode without a manual reload.
+  useEffect(() => {
+    const onFocus = () => setRetryNonce(n => n + 1);
+
+    window.addEventListener('focus', onFocus);
+
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
+  const health = useAsync(() => client.health(), [retryNonce]);
   const metricsRes = useAsync(() => client.metrics(), []);
   const summary = useAsync(
     () => client.summary({ subjectId: SUBJECT_ID, from, to, timezone }),
@@ -165,12 +177,23 @@ export function App() {
         <div className="subtitle">
           {health.data?.data.db.connected ? (
             <>
-              <span style={{ color: 'var(--good)' }}>●</span> connected · registry v{health.data.data.registry_version}
+              <span style={{ color: 'var(--good)' }}>●</span> connected to {API_BASE} · registry v
+              {health.data.data.registry_version}
             </>
           ) : health.error ? (
-            <span style={{ color: 'var(--bad)' }}>● disconnected — is `npm run api` running?</span>
+            <span style={{ color: 'var(--bad)' }}>
+              ● disconnected from {API_BASE} — {health.error}.{' '}
+              <button
+                type="button"
+                className="btn"
+                style={{ padding: '2px 10px', marginLeft: 8 }}
+                onClick={() => setRetryNonce(n => n + 1)}
+              >
+                Retry
+              </button>
+            </span>
           ) : (
-            <>loading…</>
+            <>connecting to {API_BASE}…</>
           )}
           {summary.data?.data && (
             <>

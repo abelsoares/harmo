@@ -2,7 +2,9 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   API_CORS_ORIGIN: z.string().default('*'),
-  API_HOSTNAME: z.string().default('0.0.0.0'),
+  // '::' = dual-stack listen — accepts both IPv6 (::1) and IPv4 (127.0.0.1) clients.
+  // Browsers resolving 'localhost' to either now reach the API.
+  API_HOSTNAME: z.string().default('::'),
   API_PORT: z.coerce.number().int().positive().default(4001),
   DB_HOST: z.string().min(1).default('localhost'),
   DB_NAME: z.string().min(1).default('harmo'),

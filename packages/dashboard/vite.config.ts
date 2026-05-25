@@ -10,7 +10,10 @@ export default defineConfig({
     }
   },
   server: {
+    // strictPort: true so vite errors out instead of silently using 5174/5175 — keeps you
+    // from ever opening a stale dashboard tab whose HMR socket can't reconnect.
     port: 5173,
-    strictPort: false
+    strictPort: true,
+    host: 'localhost'
   }
 });

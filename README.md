@@ -24,8 +24,12 @@ Drop your Apple Health `export.xml` somewhere on disk, then:
 # Bulk import (skips pgmq for speed — 28k envelopes/sec).
 npm run importer -- --file /path/to/export.xml --inline
 
-# Render an HTML report and open it in your browser.
+# Option A — render a static self-contained HTML report.
 npm run cli -- report --out /tmp/harmo-report.html --open
+
+# Option B — start the API + interactive React dashboard.
+npm run api          # terminal 1: Koa on :4001
+npm run dashboard    # terminal 2: Vite + React on :5173
 ```
 
 The import is idempotent — re-running on the same file leaves `samples` unchanged (dedup tuple catches it). An advisory lock prevents two concurrent imports of the same file.

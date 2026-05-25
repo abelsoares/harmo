@@ -13,10 +13,13 @@
     "npm": ">=11.0.0 <12.0.0"
   },
   "scripts": {
+    "api": "npm run api --prefix ./packages/core",
     "build": "npm run build --workspaces --if-present",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "cli": "npm run cli --prefix ./packages/core --",
+    "dashboard": "npm run dev --prefix ./packages/dashboard",
+    "dashboard:build": "npm run build --prefix ./packages/dashboard",
     "db:migrate": "npm run db:migrate --prefix ./packages/core",
     "db:reset": "npm run db:reset --prefix ./packages/core",
     "db:up": "docker compose up -d postgres",

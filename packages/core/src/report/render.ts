@@ -93,7 +93,7 @@ function fmtDateTime(d: Date | null | undefined): string {
     return '—';
   }
 
-  return d.toISOString().replace('T', ' ').slice(0, 16) + 'Z';
+  return `${d.toISOString().replace('T', ' ').slice(0, 16)}Z`;
 }
 
 function fmtDuration(seconds: number): string {

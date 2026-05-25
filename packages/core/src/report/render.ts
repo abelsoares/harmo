@@ -254,6 +254,144 @@ function barChart(rows: AggregateRow[], options: { width?: number; height?: numb
   `;
 }
 
+function quantile(sorted: number[], q: number): number {
+  if (sorted.length === 0) {
+    return 0;
+  }
+
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+
+  if (lo === hi) {
+    return sorted[lo];
+  }
+
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+// GitHub-style calendar heatmap. Last 365 days, 53 columns × 7 rows.
+// Each cell is one day; color intensity is the value relative to the dataset's 95th percentile
+// (so a single huge outlier doesn't wash everything else out).
+function calendarHeatmap(
+  daily: Array<{ date: Date; value: number }>,
+  options: { label: string; colorHue?: number; rangeDays?: number } = { label: '' }
+): string {
+  const rangeDays = options.rangeDays ?? 365;
+  const colorHue = options.colorHue ?? 215; // blue-ish
+  const cellSize = 11;
+  const cellGap = 3;
+  const padding = { top: 20, right: 16, bottom: 28, left: 32 };
+
+  // Build last-N-days index keyed by UTC YYYY-MM-DD.
+  const today = new Date();
+  const end = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const start = new Date(end.getTime() - (rangeDays - 1) * 86_400_000);
+
+  const valueByDay = new Map<string, number>();
+
+  for (const d of daily) {
+    const key = d.date.toISOString().slice(0, 10);
+    const prior = valueByDay.get(key) ?? 0;
+
+    valueByDay.set(key, prior + d.value);
+  }
+
+  // Walk every day from start..end. Compute cells.
+  type Cell = { date: Date; value: number; col: number; row: number };
+  const cells: Cell[] = [];
+  // Anchor week-0 to the Monday on/before `start`. JS getUTCDay: Sun=0 ... Sat=6 → Mon=1.
+  const startDow = (start.getUTCDay() + 6) % 7; // 0 = Monday
+  const anchorMs = start.getTime() - startDow * 86_400_000;
+
+  for (let i = 0; i < rangeDays; i++) {
+    const ms = start.getTime() + i * 86_400_000;
+    const date = new Date(ms);
+    const key = date.toISOString().slice(0, 10);
+    const value = valueByDay.get(key) ?? 0;
+    const offsetDays = Math.floor((ms - anchorMs) / 86_400_000);
+    const col = Math.floor(offsetDays / 7);
+    const row = offsetDays % 7;
+
+    cells.push({ date, value, col, row });
+  }
+
+  const nonZero = cells
+    .map(c => c.value)
+    .filter(v => v > 0)
+    .sort((a, b) => a - b);
+  const upper = nonZero.length > 0 ? Math.max(1, quantile(nonZero, 0.95)) : 1;
+  const total = cells.reduce((s, c) => s + c.value, 0);
+  const activeDays = cells.filter(c => c.value > 0).length;
+  const cols = Math.max(...cells.map(c => c.col)) + 1;
+  const W = padding.left + padding.right + cols * (cellSize + cellGap);
+  const H = padding.top + padding.bottom + 7 * (cellSize + cellGap);
+
+  const cellSvg = cells
+    .map(c => {
+      const x = padding.left + c.col * (cellSize + cellGap);
+      const y = padding.top + c.row * (cellSize + cellGap);
+
+      if (c.value === 0) {
+        return `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="var(--surface-2)"/>`;
+      }
+
+      const intensity = Math.min(1, c.value / upper);
+      const lightness = 70 - intensity * 40;
+      const fill = `hsl(${colorHue}, 80%, ${lightness.toFixed(0)}%)`;
+      const tooltip = `${c.date.toISOString().slice(0, 10)}: ${fmtNumber(c.value, { maximumFractionDigits: 0 })}`;
+
+      return `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="${fill}"><title>${escapeHtml(tooltip)}</title></rect>`;
+    })
+    .join('');
+
+  // Month labels along the top.
+  const monthLabels: string[] = [];
+  let lastMonth = -1;
+
+  for (const c of cells) {
+    if (c.row === 0) {
+      const m = c.date.getUTCMonth();
+
+      if (m !== lastMonth) {
+        const monthName = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m];
+        const x = padding.left + c.col * (cellSize + cellGap);
+
+        monthLabels.push(
+          `<text x="${x}" y="${padding.top - 6}" font-size="10" fill="var(--muted)">${monthName}</text>`
+        );
+        lastMonth = m;
+      }
+    }
+  }
+
+  // Day-of-week labels on the left.
+  const dowLabels = ['Mon', '', 'Wed', '', 'Fri', '', ''];
+  const dowSvg = dowLabels
+    .map((label, i) => {
+      if (!label) {
+        return '';
+      }
+      const y = padding.top + i * (cellSize + cellGap) + cellSize - 1;
+
+      return `<text x="${padding.left - 4}" y="${y}" text-anchor="end" font-size="10" fill="var(--muted)">${label}</text>`;
+    })
+    .join('');
+
+  return `
+    <div style="overflow-x:auto;">
+      <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%;">
+        ${monthLabels.join('')}
+        ${dowSvg}
+        ${cellSvg}
+      </svg>
+      <div style="margin-top:8px; color:var(--muted); font-size:12px;">
+        ${activeDays} active day${activeDays === 1 ? '' : 's'} · total ${fmtNumber(total, { maximumFractionDigits: 0 })} ${escapeHtml(options.label)}
+      </div>
+    </div>
+  `;
+}
+
 function statCard(label: string, value: string, sub?: string, unit?: string): string {
   return `
     <div class="card">
@@ -382,6 +520,22 @@ export function renderReport(data: ReportData): string {
       ${statCard('Active energy', fmtNumber(totalActiveKcal, { maximumFractionDigits: 0 }), undefined, 'kcal')}
       ${statCard('Distance', fmtNumber(totalDistanceKm, { maximumFractionDigits: 1 }), undefined, 'km')}
       ${latestBodyMass !== null ? statCard('Latest body mass', fmtNumber(latestBodyMass, { maximumFractionDigits: 1 }), undefined, 'kg') : ''}
+    </div>
+
+    <h2>Activity heatmap — steps</h2>
+    <div class="chart-card">
+      ${calendarHeatmap(
+        data.dailySteps.map(r => ({ date: r.bucketStart, value: r.value })),
+        { label: 'steps', colorHue: 215, rangeDays: 365 }
+      )}
+    </div>
+
+    <h2>Activity heatmap — workouts</h2>
+    <div class="chart-card">
+      ${calendarHeatmap(
+        data.dailyWorkouts.map(d => ({ date: d.date, value: d.count })),
+        { label: 'workouts', colorHue: 130, rangeDays: 365 }
+      )}
     </div>
 
     <h2>Steps per day</h2>

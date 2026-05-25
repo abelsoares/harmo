@@ -1,7 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(pkill -f apps/worker)"
-    ]
+    "allow": ["Bash(pkill -f apps/worker)"]
   }
 }

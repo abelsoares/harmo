@@ -1,5 +1,7 @@
 # Harmo — User Stories (v0)
 
+> **Status (2026-05-25):** v0 is functional end-to-end. Real 512 MB Apple export ingested in 43 s → 1.17M samples + 160 workouts + 30 correlations. Registry expanded to 75 canonical metrics. HTML report generator (with calendar heatmap, charts, stats cards) ships at 460 KB. 113 tests passing + 1 opt-in e2e. **Shipped:** US-1a, US-1b, US-2, US-3, US-4, US-5, US-6, US-7, US-8, US-9, US-10, US-11, US-12, US-13, US-14, US-15, US-16, US-17. **Partial:** US-18 (most checklist items covered by existing tests). **Open:** US-19 (Apple-Health-app spot-check). Plus bonus work: registry v2 expansion (11→75 metrics), `--inline` bulk importer + warm-registry cache, HTML report generator, calendar heatmap, cross-metric dedup index fix.
+
 The bootstrap is in place: monorepo scaffolded, schema migrated, registry seeded, three apps boot. Everything below is the remaining feature work, sliced so each story is shippable on its own (tests green, app still runs).
 
 Stories reference the v0 plan at `~/.claude/plans/so-we-are-working-stateless-ocean.md` and the design doc at [docs/HEALTH_PLATFORM_DESIGN.md](docs/HEALTH_PLATFORM_DESIGN.md). They're grouped by epic. Within an epic, stories are ordered by dependency.

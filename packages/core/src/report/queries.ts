@@ -43,6 +43,7 @@ export type ReportData = {
   dailyExerciseTime: AggregateRow[];
   vo2Max: AggregateRow[];
   restingHr: AggregateRow[];
+  dailyWorkouts: Array<{ date: Date; count: number; totalDurationSeconds: number }>;
   sleepCategories: Array<{ category: string; samples: number }>;
 };
 
@@ -71,82 +72,95 @@ export async function collectReport(knex: Knex, options: ReportOptions): Promise
   const { from, to, timezone } = await resolveRange(knex, options);
   const subjectId = options.subjectId;
 
-  const [counts, perMetric, sources, workoutsByActivity, recentWorkouts, sleepCats] = await Promise.all([
-    knex
-      .raw<{
-        rows: Array<{ samples: string; workouts: string; correlations: string; sources: string; quarantine: string }>;
-      }>(
-        `SELECT
+  const [counts, perMetric, sources, workoutsByActivity, recentWorkouts, sleepCats, dailyWorkoutsRaw] =
+    await Promise.all([
+      knex
+        .raw<{
+          rows: Array<{ samples: string; workouts: string; correlations: string; sources: string; quarantine: string }>;
+        }>(
+          `SELECT
            (SELECT count(*) FROM samples       WHERE subject_id = ?) AS samples,
            (SELECT count(*) FROM workouts      WHERE subject_id = ?) AS workouts,
            (SELECT count(*) FROM correlations  WHERE subject_id = ?) AS correlations,
            (SELECT count(*) FROM sources       WHERE subject_id = ?) AS sources,
            (SELECT count(*) FROM quarantine    WHERE subject_id = ?) AS quarantine`,
-        [subjectId, subjectId, subjectId, subjectId, subjectId]
-      )
-      .then(r => r.rows[0]),
-    knex
-      .raw<{ rows: Array<{ metric: string; n: string; first_at: Date | null; last_at: Date | null }> }>(
-        `SELECT metric,
+          [subjectId, subjectId, subjectId, subjectId, subjectId]
+        )
+        .then(r => r.rows[0]),
+      knex
+        .raw<{ rows: Array<{ metric: string; n: string; first_at: Date | null; last_at: Date | null }> }>(
+          `SELECT metric,
                 count(*)::text AS n,
                 min(start_time) AS first_at,
                 max(start_time) AS last_at
          FROM samples WHERE subject_id = ? GROUP BY metric ORDER BY count(*) DESC`,
-        [subjectId]
-      )
-      .then(r => r.rows),
-    knex
-      .raw<{ rows: Array<{ id: string; source_name: string; vendor: string; n: string }> }>(
-        `SELECT s.id, s.source_name, s.vendor, count(sa.*)::text AS n
+          [subjectId]
+        )
+        .then(r => r.rows),
+      knex
+        .raw<{ rows: Array<{ id: string; source_name: string; vendor: string; n: string }> }>(
+          `SELECT s.id, s.source_name, s.vendor, count(sa.*)::text AS n
          FROM sources s LEFT JOIN samples sa ON sa.source_id = s.id
          WHERE s.subject_id = ?
          GROUP BY s.id, s.source_name, s.vendor
          ORDER BY count(sa.*) DESC NULLS LAST`,
-        [subjectId]
-      )
-      .then(r => r.rows),
-    knex
-      .raw<{ rows: Array<{ activity_type: string; n: string; total_s: string }> }>(
-        `SELECT activity_type, count(*)::text AS n, COALESCE(sum(duration_s),0)::text AS total_s
+          [subjectId]
+        )
+        .then(r => r.rows),
+      knex
+        .raw<{ rows: Array<{ activity_type: string; n: string; total_s: string }> }>(
+          `SELECT activity_type, count(*)::text AS n, COALESCE(sum(duration_s),0)::text AS total_s
          FROM workouts WHERE subject_id = ?
            AND start_time >= ? AND start_time < ?
          GROUP BY activity_type ORDER BY count(*) DESC`,
-        [subjectId, from, to]
-      )
-      .then(r => r.rows),
-    knex('workouts')
-      .join('sources', 'sources.id', 'workouts.source_id')
-      .where('workouts.subject_id', subjectId)
-      .andWhere('workouts.start_time', '>=', from)
-      .andWhere('workouts.start_time', '<', to)
-      .orderBy('workouts.start_time', 'desc')
-      .limit(20)
-      .select<
-        Array<{
-          activity_type: string;
-          start_time: Date;
-          end_time: Date;
-          duration_s: number;
-          source_name: string;
-        }>
-      >(
-        'workouts.activity_type as activity_type',
-        'workouts.start_time as start_time',
-        'workouts.end_time as end_time',
-        'workouts.duration_s as duration_s',
-        'sources.source_name as source_name'
-      ),
-    knex
-      .raw<{ rows: Array<{ value_text: string; n: string }> }>(
-        `SELECT value_text, count(*)::text AS n
+          [subjectId, from, to]
+        )
+        .then(r => r.rows),
+      knex('workouts')
+        .join('sources', 'sources.id', 'workouts.source_id')
+        .where('workouts.subject_id', subjectId)
+        .andWhere('workouts.start_time', '>=', from)
+        .andWhere('workouts.start_time', '<', to)
+        .orderBy('workouts.start_time', 'desc')
+        .limit(20)
+        .select<
+          Array<{
+            activity_type: string;
+            start_time: Date;
+            end_time: Date;
+            duration_s: number;
+            source_name: string;
+          }>
+        >(
+          'workouts.activity_type as activity_type',
+          'workouts.start_time as start_time',
+          'workouts.end_time as end_time',
+          'workouts.duration_s as duration_s',
+          'sources.source_name as source_name'
+        ),
+      knex
+        .raw<{ rows: Array<{ value_text: string; n: string }> }>(
+          `SELECT value_text, count(*)::text AS n
          FROM samples
          WHERE subject_id = ? AND metric = 'sleep_analysis'
            AND start_time >= ? AND start_time < ?
          GROUP BY value_text ORDER BY count(*) DESC`,
-        [subjectId, from, to]
-      )
-      .then(r => r.rows)
-  ]);
+          [subjectId, from, to]
+        )
+        .then(r => r.rows),
+      knex
+        .raw<{ rows: Array<{ day: Date; n: string; total_s: string }> }>(
+          `SELECT
+           (date_trunc('day', start_time AT TIME ZONE ?) AT TIME ZONE ?) AS day,
+           count(*)::text AS n,
+           COALESCE(sum(duration_s), 0)::text AS total_s
+         FROM workouts WHERE subject_id = ?
+           AND start_time >= ? AND start_time < ?
+         GROUP BY 1 ORDER BY 1`,
+          [timezone, timezone, subjectId, from, to]
+        )
+        .then(r => r.rows)
+    ]);
 
   // Aggregates — wrap each in try/catch since some metrics may not exist in the dataset.
   const safeAggregate = async (
@@ -242,6 +256,11 @@ export async function collectReport(knex: Knex, options: ReportOptions): Promise
     dailyExerciseTime,
     vo2Max,
     restingHr,
+    dailyWorkouts: dailyWorkoutsRaw.map(d => ({
+      date: d.day,
+      count: Number(d.n),
+      totalDurationSeconds: Number(d.total_s)
+    })),
     sleepCategories: sleepCats.map(s => ({ category: s.value_text, samples: Number(s.n) }))
   };
 }

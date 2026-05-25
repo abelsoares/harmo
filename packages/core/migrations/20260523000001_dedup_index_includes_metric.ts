@@ -14,7 +14,5 @@ export const up = async (knex: Knex): Promise<void> => {
 
 export const down = async (knex: Knex): Promise<void> => {
   await knex.raw('DROP INDEX IF EXISTS samples_dedup_idx');
-  await knex.raw(
-    'CREATE UNIQUE INDEX samples_dedup_idx ON samples (subject_id, source_id, external_id, start_time)'
-  );
+  await knex.raw('CREATE UNIQUE INDEX samples_dedup_idx ON samples (subject_id, source_id, external_id, start_time)');
 };

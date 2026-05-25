@@ -153,7 +153,7 @@ describe('worker — end-to-end', () => {
       payload: {
         kind: 'Record',
         attrs: {
-          type: 'HKQuantityTypeIdentifierDietaryPotassium',
+          type: 'HKQuantityTypeIdentifierTotallyMadeUpThing',
           sourceName: 'Lose It!',
           unit: 'mg',
           startDate: '2025-01-09 13:00:00 +0100',

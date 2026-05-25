@@ -20,6 +20,11 @@ export async function normalizeAppleEnvelope(knex: Knex, envelope: RawEnvelope):
       return normalizeAppleCorrelation(knex, envelope);
     case 'ActivitySummary':
       return { kind: 'quarantine', reason: 'pre_aggregated', context: { kind: 'ActivitySummary' } };
+    case 'Me':
+    case 'ExportDate':
+      // Informational envelopes — emitted by the parser for completeness but not normalizable.
+      // Capture for forensic value (e.g. derive export date / subject DOB later) without flagging.
+      return { kind: 'quarantine', reason: 'informational', context: { kind: envelope.payload.kind } };
     default:
       return { kind: 'quarantine', reason: 'unknown_element', context: { kind: envelope.payload.kind } };
   }

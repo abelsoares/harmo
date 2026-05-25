@@ -73,11 +73,7 @@ const STYLES = `
 `;
 
 function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return input.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function fmtNumber(n: number, options: Intl.NumberFormatOptions = {}): string {
@@ -290,21 +286,27 @@ export function renderReport(data: ReportData): string {
   const avgSteps = data.dailySteps.length ? totalSteps / data.dailySteps.length : 0;
   const totalActiveKcal = rowsSum(data.dailyActiveEnergy);
   const totalDistanceKm = rowsSum(data.dailyDistance);
-  const avgHr = rowsAvg(data.hourlyHeartRate.avg);
-  const minHr = data.hourlyHeartRate.min.length ? Math.min(...data.hourlyHeartRate.min.map(r => r.value)) : null;
-  const maxHr = data.hourlyHeartRate.max.length ? Math.max(...data.hourlyHeartRate.max.map(r => r.value)) : null;
+  const avgHr = rowsAvg(data.heartRate.avg);
+  const minHr = data.heartRate.min.length ? Math.min(...data.heartRate.min.map(r => r.value)) : null;
+  const maxHr = data.heartRate.max.length ? Math.max(...data.heartRate.max.map(r => r.value)) : null;
   const latestBodyMass = data.bodyMass.length ? data.bodyMass[data.bodyMass.length - 1].value : null;
 
   const perMetricRows = data.perMetric
-    .map(
-      m => `
+    .map(m => {
+      const span =
+        m.firstAt && m.lastAt ? Math.max(1, Math.round((m.lastAt.getTime() - m.firstAt.getTime()) / 86_400_000)) : 0;
+      const rate = span > 0 ? m.sampleCount / span : 0;
+
+      return `
       <tr>
         <td>${escapeHtml(m.metric)}</td>
         <td class="num">${fmtNumber(m.sampleCount, { maximumFractionDigits: 0 })}</td>
         <td>${fmtDate(m.firstAt)}</td>
         <td>${fmtDate(m.lastAt)}</td>
-      </tr>`
-    )
+        <td class="num">${span > 0 ? `${span}d` : '—'}</td>
+        <td class="num">${rate >= 1 ? fmtNumber(rate, { maximumFractionDigits: 1 }) : rate > 0 ? fmtNumber(rate, { maximumFractionDigits: 2 }) : '—'}</td>
+      </tr>`;
+    })
     .join('');
 
   const sourceRows = data.sources
@@ -392,9 +394,31 @@ export function renderReport(data: ReportData): string {
       ${barChart(data.dailyActiveEnergy, { color: 'var(--warn)' })}
     </div>
 
-    <h2>Heart rate (hourly average)</h2>
+    <div class="row-2">
+      <div>
+        <h2>Apple Stand time (min/day)</h2>
+        <div class="chart-card">${barChart(data.dailyStandTime, { color: 'var(--accent)' })}</div>
+      </div>
+      <div>
+        <h2>Apple Exercise time (min/day)</h2>
+        <div class="chart-card">${barChart(data.dailyExerciseTime, { color: 'var(--good)' })}</div>
+      </div>
+    </div>
+
+    <h2>Heart rate (${escapeHtml(data.hrBucket)}ly average)</h2>
     <div class="chart-card">
-      ${lineChart(data.hourlyHeartRate.avg, { color: 'var(--bad)' })}
+      ${lineChart(data.heartRate.avg, { color: 'var(--bad)' })}
+    </div>
+
+    <div class="row-2">
+      <div>
+        <h2>Resting heart rate (daily avg)</h2>
+        <div class="chart-card">${lineChart(data.restingHr, { color: 'var(--bad)' })}</div>
+      </div>
+      <div>
+        <h2>VO₂ max trend</h2>
+        <div class="chart-card">${lineChart(data.vo2Max, { color: 'var(--accent-2)' })}</div>
+      </div>
     </div>
 
     <h2>Body mass (latest per day)</h2>
@@ -434,8 +458,8 @@ export function renderReport(data: ReportData): string {
     <h2>Metrics breakdown</h2>
     <div class="chart-card">
       <table>
-        <thead><tr><th>Metric</th><th class="num">Samples</th><th>First sample</th><th>Last sample</th></tr></thead>
-        <tbody>${perMetricRows || '<tr><td colspan="4" style="text-align:center;color:var(--muted)">no samples</td></tr>'}</tbody>
+        <thead><tr><th>Metric</th><th class="num">Samples</th><th>First</th><th>Last</th><th class="num">Span</th><th class="num">Rate (/day)</th></tr></thead>
+        <tbody>${perMetricRows || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">no samples</td></tr>'}</tbody>
       </table>
     </div>
 

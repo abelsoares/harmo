@@ -45,7 +45,7 @@ describe('normalizeAppleRecord', () => {
     expect(result.sample.unit).toBe('count/min');
     expect(result.sample.startTime.toISOString()).toBe('2024-12-30T17:06:57.000Z');
     expect(result.sample.startOffsetMinutes).toBe(60);
-    expect(result.sample.registryVersion).toBe(1);
+    expect(result.sample.registryVersion).toBe(2);
     expect(result.source.vendor).toBe('apple');
     expect(result.source.sourceName).toBe("Abel's Apple Watch");
     expect(result.source.softwareVersion).toBe('11.1');
@@ -222,7 +222,7 @@ describe('normalizeAppleRecord', () => {
     const result = await normalizeAppleRecord(
       knex,
       appleEnvelope({
-        type: 'HKQuantityTypeIdentifierDietaryPotassium',
+        type: 'HKQuantityTypeIdentifierTotallyMadeUpThing',
         sourceName: 'Lose It!',
         unit: 'mg',
         startDate: '2025-01-09 13:00:00 +0100',
@@ -234,7 +234,7 @@ describe('normalizeAppleRecord', () => {
     expect(result.kind).toBe('quarantine');
     if (result.kind === 'quarantine') {
       expect(result.reason).toBe('unknown_alias');
-      expect(result.context).toMatchObject({ alias: 'HKQuantityTypeIdentifierDietaryPotassium' });
+      expect(result.context).toMatchObject({ alias: 'HKQuantityTypeIdentifierTotallyMadeUpThing' });
     }
   });
 

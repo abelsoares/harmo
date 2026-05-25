@@ -1,4 +1,4 @@
-import { aggregate, type AggregateRow } from '@src/aggregate';
+import { type AggregateRow, aggregate } from '@src/aggregate';
 import type { Knex } from 'knex';
 
 export type ReportOptions = {
@@ -33,18 +33,20 @@ export type ReportData = {
       sourceName: string;
     }>;
   };
+  hrBucket: 'hour' | 'day' | 'week' | 'month';
   dailySteps: AggregateRow[];
-  hourlyHeartRate: { avg: AggregateRow[]; min: AggregateRow[]; max: AggregateRow[] };
+  heartRate: { avg: AggregateRow[]; min: AggregateRow[]; max: AggregateRow[] };
   dailyActiveEnergy: AggregateRow[];
   dailyDistance: AggregateRow[];
   bodyMass: AggregateRow[];
+  dailyStandTime: AggregateRow[];
+  dailyExerciseTime: AggregateRow[];
+  vo2Max: AggregateRow[];
+  restingHr: AggregateRow[];
   sleepCategories: Array<{ category: string; samples: number }>;
 };
 
-async function resolveRange(
-  knex: Knex,
-  options: ReportOptions
-): Promise<{ from: Date; to: Date; timezone: string }> {
+async function resolveRange(knex: Knex, options: ReportOptions): Promise<{ from: Date; to: Date; timezone: string }> {
   const subject = await knex('subjects').where({ id: options.subjectId }).first<{ timezone: string }>('timezone');
   const timezone = options.timezone ?? subject?.timezone ?? 'UTC';
 
@@ -147,7 +149,11 @@ export async function collectReport(knex: Knex, options: ReportOptions): Promise
   ]);
 
   // Aggregates — wrap each in try/catch since some metrics may not exist in the dataset.
-  const safeAggregate = async (metric: string, bucket: 'day' | 'hour' | 'week' | 'month', agg?: 'sum' | 'avg' | 'min' | 'max' | 'latest') => {
+  const safeAggregate = async (
+    metric: string,
+    bucket: 'day' | 'hour' | 'week' | 'month',
+    agg?: 'sum' | 'avg' | 'min' | 'max' | 'latest'
+  ) => {
     try {
       return await aggregate(knex, { subjectId, metric, bucket, agg, from, to, timezone });
     } catch {
@@ -155,14 +161,34 @@ export async function collectReport(knex: Knex, options: ReportOptions): Promise
     }
   };
 
-  const [dailySteps, hrAvg, hrMin, hrMax, dailyActiveEnergy, dailyDistance, bodyMass] = await Promise.all([
+  // Adaptive HR bucket: hourly is too granular for >60-day ranges (5 years ≈ 43k points).
+  const rangeDays = (to.getTime() - from.getTime()) / 86_400_000;
+  const hrBucket: 'hour' | 'day' | 'week' = rangeDays > 365 ? 'week' : rangeDays > 60 ? 'day' : 'hour';
+
+  const [
+    dailySteps,
+    hrAvg,
+    hrMin,
+    hrMax,
+    dailyActiveEnergy,
+    dailyDistance,
+    bodyMass,
+    dailyStandTime,
+    dailyExerciseTime,
+    vo2Max,
+    restingHr
+  ] = await Promise.all([
     safeAggregate('step_count', 'day'),
-    safeAggregate('heart_rate', 'hour', 'avg'),
-    safeAggregate('heart_rate', 'hour', 'min'),
-    safeAggregate('heart_rate', 'hour', 'max'),
+    safeAggregate('heart_rate', hrBucket, 'avg'),
+    safeAggregate('heart_rate', hrBucket, 'min'),
+    safeAggregate('heart_rate', hrBucket, 'max'),
     safeAggregate('active_energy_burned', 'day'),
     safeAggregate('distance_walking_running', 'day'),
-    safeAggregate('body_mass', 'day', 'latest')
+    safeAggregate('body_mass', 'day', 'latest'),
+    safeAggregate('apple_stand_time', 'day'),
+    safeAggregate('apple_exercise_time', 'day'),
+    safeAggregate('vo2_max', 'day', 'latest'),
+    safeAggregate('resting_heart_rate', 'day', 'avg')
   ]);
 
   const totalDurationSeconds = workoutsByActivity.reduce((s, w) => s + Number(w.total_s), 0);
@@ -206,11 +232,16 @@ export async function collectReport(knex: Knex, options: ReportOptions): Promise
         sourceName: w.source_name
       }))
     },
+    hrBucket,
     dailySteps,
-    hourlyHeartRate: { avg: hrAvg, min: hrMin, max: hrMax },
+    heartRate: { avg: hrAvg, min: hrMin, max: hrMax },
     dailyActiveEnergy,
     dailyDistance,
     bodyMass,
+    dailyStandTime,
+    dailyExerciseTime,
+    vo2Max,
+    restingHr,
     sleepCategories: sleepCats.map(s => ({ category: s.value_text, samples: Number(s.n) }))
   };
 }

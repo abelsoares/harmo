@@ -1,4 +1,4 @@
-import { DEFAULT_SUBJECT_ID, type CanonicalSample, type RawApplePayload, type RawEnvelope } from '@harmo/common';
+import { type CanonicalSample, DEFAULT_SUBJECT_ID, type RawApplePayload, type RawEnvelope } from '@harmo/common';
 import { dispatchNormalize } from '@src/normalize/dispatch';
 import type { Knex } from 'knex';
 import { ingestCanonical } from './canonical';
@@ -16,7 +16,8 @@ export type BulkStats = {
 
 export class BulkProcessor {
   private sampleBuffer: CanonicalSample[] = [];
-  private quarantineBuffer: Array<{ vendor: string; reason: string; raw: unknown; context?: Record<string, unknown> }> = [];
+  private quarantineBuffer: Array<{ vendor: string; reason: string; raw: unknown; context?: Record<string, unknown> }> =
+    [];
   private stats: BulkStats = { processed: 0, samples: 0, workouts: 0, correlations: 0, quarantined: 0 };
 
   constructor(

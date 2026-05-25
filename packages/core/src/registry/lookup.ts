@@ -62,9 +62,10 @@ export async function warmRegistry(knex: Knex): Promise<void> {
     ])
   );
 
-  const conversions = await knex('unit_conversions').select<
-    Array<{ from_unit: string; to_unit: string; factor: string; offset: string }>
-  >('*');
+  const conversions =
+    await knex('unit_conversions').select<
+      Array<{ from_unit: string; to_unit: string; factor: string; offset: string }>
+    >('*');
 
   unitCache = new Map(
     conversions.map(u => [`${u.from_unit}|${u.to_unit}`, { factor: Number(u.factor), offset: Number(u.offset) }])

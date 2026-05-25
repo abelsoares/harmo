@@ -28,10 +28,44 @@ export type ImportResult = {
 
 type Envelope = { vendor: 'apple'; batchId: string; payload: RawApplePayload };
 
+// Two 32-bit ints for pg_advisory_lock — use a stable hash of (subject || source_file).
+function advisoryLockKeys(subjectId: string, sourceFile: string): [number, number] {
+  const input = `${subjectId}|${sourceFile}`;
+  let h1 = 0x811c9dc5;
+  let h2 = 0xcbf29ce4;
+
+  for (let i = 0; i < input.length; i++) {
+    h1 = ((h1 ^ input.charCodeAt(i)) * 0x01000193) | 0;
+    h2 = ((h2 ^ input.charCodeAt(i)) * 0x100000001b3) | 0;
+  }
+
+  return [h1 | 0, h2 | 0];
+}
+
 export async function runImport(options: ImportOptions): Promise<ImportResult> {
   const knex = getKnex();
   const subjectId = options.subjectId ?? DEFAULT_SUBJECT_ID;
   const batchSize = options.batchSize ?? env.INGEST_BATCH_SIZE;
+  const [lockA, lockB] = advisoryLockKeys(subjectId, options.filePath);
+
+  const lockRow = await knex
+    .raw<{ rows: Array<{ locked: boolean }> }>('SELECT pg_try_advisory_lock(?, ?) AS locked', [lockA, lockB])
+    .then(r => r.rows[0]);
+
+  if (!lockRow?.locked) {
+    logger.warn(
+      { filePath: options.filePath, subjectId },
+      'another importer holds the advisory lock for this (subject, file); exiting'
+    );
+
+    return {
+      runId: '',
+      parsedCount: 0,
+      queuedCount: 0,
+      status: 'failed',
+      error: 'concurrent_import_in_progress'
+    };
+  }
 
   const [run] = await knex('import_runs')
     .insert({
@@ -44,10 +78,7 @@ export async function runImport(options: ImportOptions): Promise<ImportResult> {
   const runId = String(run.id);
 
   return runWithContext({ runId }, async () => {
-    logger.info(
-      { filePath: options.filePath, subjectId, batchSize, inline: !!options.inline },
-      'importer starting'
-    );
+    logger.info({ filePath: options.filePath, subjectId, batchSize, inline: !!options.inline }, 'importer starting');
 
     let parsed = 0;
     let queued = 0;
@@ -91,7 +122,9 @@ export async function runImport(options: ImportOptions): Promise<ImportResult> {
         }
 
         if (parsed % PROGRESS_EVERY === 0) {
-          const progressStats = processor ? processor.getStats() : { samples: 0, workouts: 0, correlations: 0, quarantined: 0 };
+          const progressStats = processor
+            ? processor.getStats()
+            : { samples: 0, workouts: 0, correlations: 0, quarantined: 0 };
           const elapsedSec = Math.round((Date.now() - startTime) / 1000);
           const ratePerSec = parsed / Math.max(elapsedSec, 1);
 
@@ -110,12 +143,16 @@ export async function runImport(options: ImportOptions): Promise<ImportResult> {
 
       const stats = processor?.getStats();
 
-      await knex('import_runs').where({ id: run.id }).update({
-        finished_at: knex.fn.now(),
-        parsed_count: parsed,
-        queued_count: processor ? (stats?.samples ?? 0) + (stats?.workouts ?? 0) + (stats?.correlations ?? 0) + (stats?.quarantined ?? 0) : queued,
-        status: 'finished'
-      });
+      await knex('import_runs')
+        .where({ id: run.id })
+        .update({
+          finished_at: knex.fn.now(),
+          parsed_count: parsed,
+          queued_count: processor
+            ? (stats?.samples ?? 0) + (stats?.workouts ?? 0) + (stats?.correlations ?? 0) + (stats?.quarantined ?? 0)
+            : queued,
+          status: 'finished'
+        });
 
       logger.info({ parsed, queued, stats }, 'importer finished');
 
@@ -149,6 +186,8 @@ export async function runImport(options: ImportOptions): Promise<ImportResult> {
       logger.error({ err, parsed, queued }, 'importer failed');
 
       return { runId, parsedCount: parsed, queuedCount: queued, status: 'failed', error: message };
+    } finally {
+      await knex.raw('SELECT pg_advisory_unlock(?, ?)', [lockA, lockB]);
     }
   });
 }
@@ -158,7 +197,11 @@ const program = new Command()
   .description('Stream an Apple Health export.xml into the ingest queue')
   .requiredOption('-f, --file <path>', 'path to export.xml')
   .option('-s, --subject <id>', 'subject id', DEFAULT_SUBJECT_ID)
-  .option('-b, --batch-size <n>', 'envelopes per batch (pgmq batch or bulk-insert chunk)', String(env.INGEST_BATCH_SIZE))
+  .option(
+    '-b, --batch-size <n>',
+    'envelopes per batch (pgmq batch or bulk-insert chunk)',
+    String(env.INGEST_BATCH_SIZE)
+  )
   .option('--inline', 'process envelopes directly into samples (skip pgmq) — best for one-shot bulk imports', false)
   .option('--limit <n>', 'stop after N envelopes (for testing)');
 

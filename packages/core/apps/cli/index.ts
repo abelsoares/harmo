@@ -5,6 +5,7 @@ import { type AggregateBucket, type AggregateFn, aggregate } from '@src/aggregat
 import { closeKnex, getKnex, initSentry, logger } from '@src/clients';
 import { mapError } from '@src/errors';
 import { skimAppleExport } from '@src/normalize/apple';
+import { runReplayQuarantine } from '@src/quarantine/replay';
 import { generateReport } from '@src/report';
 import { Command } from 'commander';
 
@@ -179,12 +180,73 @@ program
   });
 
 program
-  .command('replay-quarantine')
-  .description('Replay quarantined rows (stub)')
-  .option('-r, --reason <reason>', 'filter by reason')
-  .option('--dry-run', 'do not actually re-enqueue', false)
+  .command('imports:list')
+  .description('List recent import runs (US-16)')
+  .option('-n, --limit <n>', 'max rows', '20')
+  .option('-s, --subject <id>', 'subject id', 'default')
   .action(async opts => {
-    logger.info({ opts }, 'replay-quarantine (stub) — see US-9');
+    const knex = getKnex();
+    const rows = await knex('import_runs')
+      .where('subject_id', opts.subject)
+      .orderBy('id', 'desc')
+      .limit(Number(opts.limit))
+      .select<
+        Array<{
+          id: string;
+          status: string;
+          source_file: string;
+          started_at: Date;
+          finished_at: Date | null;
+          parsed_count: number;
+          queued_count: number;
+          error: string | null;
+        }>
+      >('*');
+
+    logger.info({ count: rows.length, subject: opts.subject }, 'import_runs');
+
+    for (const row of rows) {
+      const ms = row.finished_at ? row.finished_at.getTime() - row.started_at.getTime() : null;
+
+      logger.info(
+        {
+          id: row.id,
+          status: row.status,
+          parsed: row.parsed_count,
+          queued: row.queued_count,
+          startedAt: row.started_at,
+          durationMs: ms,
+          file: row.source_file,
+          error: row.error
+        },
+        'import_run'
+      );
+    }
+  });
+
+program
+  .command('replay-quarantine')
+  .description('Re-process quarantined rows through the normalize pipeline (US-15)')
+  .option('-r, --reason <reason>', 'filter by reason (e.g. unknown_alias, unit_unknown, dlq)')
+  .option('--vendor <name>', 'filter by vendor')
+  .option('--since <iso>', 'quarantine.created_at lower bound')
+  .option('--limit <n>', 'cap rows replayed in this call')
+  .option('--inline', 'process directly via BulkProcessor (skip pgmq)', false)
+  .option('--dry-run', 'count rows by reason; do not modify state', false)
+  .option('-s, --subject <id>', 'subject id', 'default')
+  .action(async opts => {
+    const knex = getKnex();
+    const result = await runReplayQuarantine(knex, {
+      subjectId: opts.subject,
+      reason: opts.reason,
+      vendor: opts.vendor,
+      since: opts.since ? new Date(opts.since) : undefined,
+      limit: opts.limit ? Number(opts.limit) : undefined,
+      inline: opts.inline,
+      dryRun: opts.dryRun
+    });
+
+    logger.info(result, opts.dryRun ? 'replay-quarantine dry-run' : 'replay-quarantine complete');
   });
 
 async function main() {

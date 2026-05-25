@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@apps': path.resolve(__dirname, './apps'),
+      '@harmo/api-client': path.resolve(__dirname, '../api-client/src/index.ts'),
       '@harmo/common': path.resolve(__dirname, '../common/src/index.ts'),
       '@src': path.resolve(__dirname, './src'),
       '@test': path.resolve(__dirname, './test')

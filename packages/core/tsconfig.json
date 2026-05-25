@@ -8,6 +8,7 @@
     "outDir": "./dist",
     "paths": {
       "@apps/*": ["./apps/*"],
+      "@harmo/api-client": ["../api-client/src/index.ts"],
       "@harmo/common": ["../common/src/index.ts"],
       "@harmo/common/*": ["../common/src/*"],
       "@src/*": ["./src/*"],
@@ -27,6 +28,7 @@
     "migrations/**/*",
     "knexfile.ts",
     "vitest.config.ts",
-    "../common/src/**/*"
+    "../common/src/**/*",
+    "../api-client/src/**/*"
   ]
 }

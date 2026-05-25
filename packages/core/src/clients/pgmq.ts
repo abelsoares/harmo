@@ -35,9 +35,9 @@ export async function read<T>(knex: Knex, queue: string, vtSeconds: number, qty:
 }
 
 export async function archive(knex: Knex, queue: string, msgId: number): Promise<void> {
-  await knex.raw('SELECT pgmq.archive(?, ?)', [queue, msgId]);
+  await knex.raw('SELECT pgmq.archive(?::text, ?::bigint)', [queue, msgId]);
 }
 
 export async function deleteMessage(knex: Knex, queue: string, msgId: number): Promise<void> {
-  await knex.raw('SELECT pgmq.delete(?, ?)', [queue, msgId]);
+  await knex.raw('SELECT pgmq.delete(?::text, ?::bigint)', [queue, msgId]);
 }

@@ -2,7 +2,9 @@ import { createReadStream } from 'node:fs';
 import { DEFAULT_SUBJECT_ID, INGEST_QUEUE, type RawApplePayload } from '@harmo/common';
 import { closeKnex, env, getKnex, initSentry, logger, runWithContext, sendBatch } from '@src/clients';
 import { mapError } from '@src/errors';
+import { BulkProcessor } from '@src/ingest/bulk-processor';
 import { parseAppleExport } from '@src/normalize/apple';
+import { warmRegistry } from '@src/registry/lookup';
 import { Command } from 'commander';
 
 const PROGRESS_EVERY = 50_000;
@@ -11,6 +13,8 @@ export type ImportOptions = {
   filePath: string;
   subjectId?: string;
   batchSize?: number;
+  inline?: boolean;
+  limit?: number;
 };
 
 export type ImportResult = {
@@ -19,6 +23,7 @@ export type ImportResult = {
   queuedCount: number;
   status: 'finished' | 'failed';
   error?: string;
+  stats?: { samples: number; workouts: number; correlations: number; quarantined: number };
 };
 
 type Envelope = { vendor: 'apple'; batchId: string; payload: RawApplePayload };
@@ -39,13 +44,17 @@ export async function runImport(options: ImportOptions): Promise<ImportResult> {
   const runId = String(run.id);
 
   return runWithContext({ runId }, async () => {
-    logger.info({ filePath: options.filePath, subjectId, batchSize }, 'importer starting');
+    logger.info(
+      { filePath: options.filePath, subjectId, batchSize, inline: !!options.inline },
+      'importer starting'
+    );
 
     let parsed = 0;
     let queued = 0;
     let batch: Envelope[] = [];
+    const processor = options.inline ? new BulkProcessor(knex, runId, batchSize, subjectId) : null;
 
-    const flush = async () => {
+    const flushQueue = async () => {
       if (batch.length === 0) {
         return;
       }
@@ -56,33 +65,74 @@ export async function runImport(options: ImportOptions): Promise<ImportResult> {
     };
 
     try {
+      if (processor) {
+        await warmRegistry(knex);
+      }
+
       const stream = createReadStream(options.filePath);
 
-      for await (const payload of parseAppleExport(stream)) {
-        parsed += 1;
-        batch.push({ vendor: 'apple', batchId: runId, payload });
+      const startTime = Date.now();
 
-        if (batch.length >= batchSize) {
-          await flush();
+      for await (const payload of parseAppleExport(stream)) {
+        if (options.limit !== undefined && parsed >= options.limit) {
+          break;
+        }
+
+        parsed += 1;
+
+        if (processor) {
+          await processor.process(payload);
+        } else {
+          batch.push({ vendor: 'apple', batchId: runId, payload });
+
+          if (batch.length >= batchSize) {
+            await flushQueue();
+          }
         }
 
         if (parsed % PROGRESS_EVERY === 0) {
-          logger.info({ parsed, queued }, 'importer progress');
+          const progressStats = processor ? processor.getStats() : { samples: 0, workouts: 0, correlations: 0, quarantined: 0 };
+          const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+          const ratePerSec = parsed / Math.max(elapsedSec, 1);
+
+          logger.info(
+            { parsed, queued, elapsedSec, ratePerSec: Math.round(ratePerSec), ...progressStats },
+            'importer progress'
+          );
         }
       }
 
-      await flush();
+      if (processor) {
+        await processor.flush();
+      } else {
+        await flushQueue();
+      }
+
+      const stats = processor?.getStats();
 
       await knex('import_runs').where({ id: run.id }).update({
         finished_at: knex.fn.now(),
         parsed_count: parsed,
-        queued_count: queued,
+        queued_count: processor ? (stats?.samples ?? 0) + (stats?.workouts ?? 0) + (stats?.correlations ?? 0) + (stats?.quarantined ?? 0) : queued,
         status: 'finished'
       });
 
-      logger.info({ parsed, queued }, 'importer finished');
+      logger.info({ parsed, queued, stats }, 'importer finished');
 
-      return { runId, parsedCount: parsed, queuedCount: queued, status: 'finished' };
+      return {
+        runId,
+        parsedCount: parsed,
+        queuedCount: queued,
+        status: 'finished',
+        stats: stats
+          ? {
+              samples: stats.samples,
+              workouts: stats.workouts,
+              correlations: stats.correlations,
+              quarantined: stats.quarantined
+            }
+          : undefined
+      };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
 
@@ -108,16 +158,22 @@ const program = new Command()
   .description('Stream an Apple Health export.xml into the ingest queue')
   .requiredOption('-f, --file <path>', 'path to export.xml')
   .option('-s, --subject <id>', 'subject id', DEFAULT_SUBJECT_ID)
-  .option('-b, --batch-size <n>', 'envelopes per pgmq batch', String(env.INGEST_BATCH_SIZE));
+  .option('-b, --batch-size <n>', 'envelopes per batch (pgmq batch or bulk-insert chunk)', String(env.INGEST_BATCH_SIZE))
+  .option('--inline', 'process envelopes directly into samples (skip pgmq) — best for one-shot bulk imports', false)
+  .option('--limit <n>', 'stop after N envelopes (for testing)');
 
 async function main() {
   initSentry();
 
-  const opts = program.parse(process.argv).opts<{ file: string; subject: string; batchSize: string }>();
+  const opts = program
+    .parse(process.argv)
+    .opts<{ file: string; subject: string; batchSize: string; inline: boolean; limit?: string }>();
   const result = await runImport({
     filePath: opts.file,
     subjectId: opts.subject,
-    batchSize: Number(opts.batchSize)
+    batchSize: Number(opts.batchSize),
+    inline: opts.inline,
+    limit: opts.limit ? Number(opts.limit) : undefined
   });
 
   if (result.status === 'failed') {

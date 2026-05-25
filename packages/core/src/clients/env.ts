@@ -1,6 +1,9 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
+  API_CORS_ORIGIN: z.string().default('*'),
+  API_HOSTNAME: z.string().default('0.0.0.0'),
+  API_PORT: z.coerce.number().int().positive().default(4001),
   DB_HOST: z.string().min(1).default('localhost'),
   DB_NAME: z.string().min(1).default('harmo'),
   DB_PASSWORD: z.string().default('harmo'),

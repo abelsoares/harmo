@@ -1,5 +1,24 @@
 {
   "permissions": {
-    "allow": ["Bash(pkill -f apps/worker)"]
+    "allow": [
+      "Bash(pkill -f apps/worker)",
+      "Bash(curl -s http://localhost:4001/v1/health)",
+      "Bash(curl -s http://localhost:4001/v1/metrics)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({'registry_version': d['registry_version'], 'count': len\\(d['data']\\), 'first3': [m['metric'] for m in d['data'][:3]]}, indent=2\\)\\)\")",
+      "Bash(curl -s 'http://localhost:4001/v1/subjects/default/aggregate?metric=step_count&bucket=day&from=2026-05-11T00:00:00Z&to=2026-05-18T00:00:00Z&timezone=Europe/Lisbon')",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s 'http://localhost:4001/v1/subjects/default/summary?from=2026-05-15T00:00:00Z&to=2026-05-19T00:00:00Z')",
+      "Bash(pkill -f 'apps/api')",
+      "Bash(echo \"pid=$!\")",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" http://localhost:4001/v1/health)",
+      "Bash(curl -s 'http://localhost:4001/v1/subjects/default/aggregate?metric=step_count&bucket=day&from=2026-05-11T00:00:00Z&to=2026-05-19T00:00:00Z&timezone=Europe/Lisbon')",
+      "Bash(curl -s 'http://localhost:4001/v1/subjects/default/sources?include_sample_count=true')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(f'{s[\\\\\"source_name\\\\\"][:35]:35s} {s[\\\\\"sample_count\\\\\"]:>10,}'\\) for s in d['data'][:8]]\")",
+      "Bash(curl -s 'http://localhost:4001/v1/subjects/default/summary')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\)['data']; print\\('range:', d['range']\\); print\\('totals:', d['totals']\\); print\\('metrics:', len\\(d['per_metric']\\)\\); print\\('workouts_by_activity:', d['workouts_by_activity'][:3]\\)\")",
+      "Bash(curl -s 'http://localhost:4001/v1/subjects/default/samples?metric=heart_rate&from=2026-05-18T00:00:00Z&to=2026-05-19T00:00:00Z&limit=3')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('count:', len\\(d['data']\\)\\); print\\('next_cursor:', d['next_cursor'][:40] if d['next_cursor'] else None\\); print\\('first row:', d['data'][0]\\)\")",
+      "Bash(pkill -f 'apps/api/index.ts')"
+    ]
   }
 }
